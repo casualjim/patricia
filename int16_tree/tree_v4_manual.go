@@ -14,11 +14,11 @@ func (t *TreeV4) newNode(address patricia.IPv4Address, prefixLength uint) uint {
 	if availCount > 0 {
 		index := t.availableIndexes[availCount-1]
 		t.availableIndexes = t.availableIndexes[:availCount-1]
-		t.nodes[index] = treeNodeV4{prefix: address.Address, prefixLength: prefixLength}
+		t.nodes[index] = treeNodeV4{prefix: address.Address, Length:address.Length, prefixLength: prefixLength}
 		return index
 	}
 
-	t.nodes = append(t.nodes, treeNodeV4{prefix: address.Address, prefixLength: prefixLength})
+	t.nodes = append(t.nodes, treeNodeV4{prefix: address.Address, Length:address.Length, prefixLength: prefixLength})
 	return uint(len(t.nodes) - 1)
 }
 

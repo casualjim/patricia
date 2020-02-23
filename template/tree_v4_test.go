@@ -8,6 +8,7 @@ import (
 
 	"github.com/kentik/patricia"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func ipv4FromBytes(bytes []byte, length int) patricia.IPv4Address {
@@ -306,6 +307,44 @@ func TestAddressReusable(t *testing.T) {
 		assert.Equal(t, "Hello", tags[0])
 	}
 	assert.NoError(t, err)
+}
+
+func TestSubnetsTree(t *testing.T) {
+	tree := NewTreeV4()
+
+	for _, s := range []string{
+		"0.0.0.0/8",
+		"1.0.0.0/8",
+		"5.0.0.0/8",
+		"0.0.0.0/0",
+		"::/64",
+		"::/0",
+		"0.0.0.0/10",
+		"0.0.10.0/24",
+		"0.0.10.8/32",
+		"0.0.10.18/32",
+		"10.0.0.0/8",
+		"10.10.0.0/16",
+		"10.10.10.0/24",
+		"10.10.10.3/32",
+		"10.10.10.4/32",
+		"10.10.10.5/32",
+		"10.20.10.0/24",
+		"10.20.10.5/32",
+	} {
+		item, _, err := patricia.ParseIPFromString(s)
+		require.NoError(t, err)
+		if item == nil {
+			continue
+		}
+		_, _, err = tree.Add(*item, s, nil)
+		require.NoError(t, err) //fmt.Sprintf("tag-%d", i+1), nil)
+	}
+
+	found, tags, err := tree.FindSubnetTags(ipv4FromBytes([]byte{0, 0, 10, 0}, 24))
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, []GeneratedType{"0.0.10.0/24", "0.0.10.8/32", "0.0.10.18/32"}, tags)
 }
 
 func TestSimpleTree1(t *testing.T) {

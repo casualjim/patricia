@@ -2,7 +2,6 @@ package float64_tree
 
 import (
 	"fmt"
-
 	"github.com/kentik/patricia"
 )
 
@@ -628,6 +627,114 @@ func (t *TreeV6) FindDeepestTag(address patricia.IPv6Address) (bool, float64, er
 		if matchCount == address.Length {
 			// exact match - we're done
 			return found, ret, nil
+		}
+
+		// there's still more address - keep traversing
+		address.ShiftLeft(matchCount)
+		if !address.IsLeftBitSet() {
+			nodeIndex = node.Left
+		} else {
+			nodeIndex = node.Right
+		}
+	}
+}
+
+
+func (t *TreeV6) walkTree(left, right uint, walkFn func([]float64, int) bool, depth int) error {
+	if left == 0 && right == 0 {
+		return errStop
+	}
+	var err error
+	if left != 0 {
+		node := &t.nodes[left]
+		if node.TagCount > 0 {
+			if !walkFn(t.tagsForNode(left), depth) {
+				return errStop
+			}
+		}
+		err = t.walkTree(node.Left, node.Right, walkFn, depth+1)
+	}
+	if right != 0 {
+		node := &t.nodes[right]
+		if node.TagCount > 0 {
+			if !walkFn(t.tagsForNode(right), depth) {
+				return errStop
+			}
+		}
+		if err = t.walkTree(node.Left, node.Right, walkFn, depth+1); err != nil && err == errStop {
+			return err
+		}
+	}
+	return nil
+}
+func (t *TreeV6) Walk(walkFn func([]float64, int) bool) error {
+	root := &t.nodes[1]
+
+	tgs := t.tagsForNode(1)
+	if len(tgs) > 0 {
+		walkFn(tgs, 1)
+	}
+	if err := t.walkTree(root.Left, root.Right, walkFn, 2); err != nil && err != errStop {
+		return err
+	}
+	return nil
+}
+
+// FindSubnetTags finds the tags at the deepest level in the tree, representing the closest match.
+// It then traverses the valid subnets to get the tags of the subnets
+// - returns empty array if nothing found
+func (t *TreeV6) FindSubnetTags(address patricia.IPv6Address) (bool, []float64, error) {
+	root := &t.nodes[1]
+	var found bool
+	var retTagIndex uint
+
+	if root.TagCount > 0 {
+		retTagIndex = 1
+		found = true
+	}
+
+	if address.Length == 0 {
+		// caller just looking for root tags
+		return found, t.tagsForNode(retTagIndex), nil
+	}
+
+	var nodeIndex uint
+	if !address.IsLeftBitSet() {
+		nodeIndex = root.Left
+	} else {
+		nodeIndex = root.Right
+	}
+
+	// traverse the tree
+	for {
+		if nodeIndex == 0 {
+			return found, t.tagsForNode(retTagIndex), nil
+		}
+		node := &t.nodes[nodeIndex]
+
+		matchCount := node.MatchCount(address)
+		if matchCount < node.prefixLength {
+			// didn't match the entire node - we're done
+			return false, nil, nil
+		}
+
+		// matched the full node - get its tags, then chop off the bits we've already matched and continue
+		if node.TagCount > 0 {
+			retTagIndex = nodeIndex
+			found = true
+		}
+
+		if matchCount == address.Length {
+			// exact match - we're done
+			results := t.tagsForNode(retTagIndex)
+			err := t.walkTree(node.Left, node.Right, func(types []float64, i int) bool {
+				results = append(results, types...)
+				return true
+			}, 1)
+			if err != nil && err != errStop {
+				return false, nil, err
+			}
+			return found, results, nil
 		}
 
 		// there's still more address - keep traversing

@@ -137,7 +137,7 @@ func TestBulkLoad(t *testing.T) {
 	assert.Equal(t, nodesLength, len(tree.nodes))
 	assert.Equal(t, nodesCapacity, cap(tree.nodes))
 
-	//print()
+	print()
 }
 
 func arraysEqual(tag string, expected []string, found []GeneratedType) bool {
