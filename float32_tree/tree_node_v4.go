@@ -11,7 +11,6 @@ const _leftmost32Bit = uint32(1 << 31)
 type treeNodeV4 struct {
 	Left         uint // left node index: 0 for not set
 	Right        uint // right node index: 0 for not set
-	Length       uint
 	prefix       uint32
 	prefixLength uint
 	TagCount     int

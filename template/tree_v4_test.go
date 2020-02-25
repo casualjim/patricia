@@ -341,10 +341,15 @@ func TestSubnetsTree(t *testing.T) {
 		require.NoError(t, err) //fmt.Sprintf("tag-%d", i+1), nil)
 	}
 
-	found, tags, err := tree.FindSubnetTags(ipv4FromBytes([]byte{0, 0, 10, 0}, 24))
+	found, tags, err := tree.FindSubnetTags(ipv4FromBytes([]byte{0, 0, 10, 0}, 24), true)
 	require.NoError(t, err)
 	require.True(t, found)
 	require.Equal(t, []GeneratedType{"0.0.10.0/24", "0.0.10.8/32", "0.0.10.18/32"}, tags)
+
+	found, tags, err = tree.FindSubnetTags(ipv4FromBytes([]byte{0, 0, 10, 0}, 24), false)
+	require.NoError(t, err)
+	require.True(t, found)
+	require.Equal(t, []GeneratedType{"0.0.10.8/32", "0.0.10.18/32"}, tags)
 }
 
 func TestSimpleTree1(t *testing.T) {

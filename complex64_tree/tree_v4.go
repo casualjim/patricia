@@ -683,7 +683,7 @@ func (t *TreeV4) Walk(walkFn func([]complex64, int) bool) error {
 // FindSubnetTags finds the tags at the deepest level in the tree, representing the closest match.
 // It then traverses the valid subnets to get the tags of the subnets
 // - returns empty array if nothing found
-func (t *TreeV4) FindSubnetTags(address patricia.IPv4Address) (bool, []complex64, error) {
+func (t *TreeV4) FindSubnetTags(address patricia.IPv4Address, inclusive bool) (bool, []complex64, error) {
 	root := &t.nodes[1]
 	var found bool
 	var retTagIndex uint
@@ -708,7 +708,10 @@ func (t *TreeV4) FindSubnetTags(address patricia.IPv4Address) (bool, []complex64
 	// traverse the tree
 	for {
 		if nodeIndex == 0 {
-			return found, t.tagsForNode(retTagIndex), nil
+			if inclusive {
+				return found, t.tagsForNode(retTagIndex), nil
+			}
+			return found, nil, nil
 		}
 		node := &t.nodes[nodeIndex]
 
@@ -726,7 +729,10 @@ func (t *TreeV4) FindSubnetTags(address patricia.IPv4Address) (bool, []complex64
 
 		if matchCount == address.Length {
 			// exact match - we're done
-			results := t.tagsForNode(retTagIndex)
+			var results []complex64
+			if inclusive {
+				results = t.tagsForNode(retTagIndex)
+			}
 			err := t.walkTree(node.Left, node.Right, func(types []complex64, i int) bool {
 				results = append(results, types...)
 				return true
