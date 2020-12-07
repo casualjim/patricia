@@ -2,6 +2,7 @@ package uint32_tree
 
 import (
 	"fmt"
+
 	"github.com/kentik/patricia"
 )
 
@@ -639,7 +640,6 @@ func (t *TreeV4) FindDeepestTag(address patricia.IPv4Address) (bool, uint32, err
 	}
 }
 
-
 func (t *TreeV4) walkTree(left, right uint, walkFn func([]uint32, int) bool, depth int) error {
 	if left == 0 && right == 0 {
 		return errStop
@@ -693,12 +693,24 @@ func (t *TreeV4) FindSubnetTags(address patricia.IPv4Address, inclusive bool) (b
 		found = true
 	}
 
+	var nodeIndex uint
 	if address.Length == 0 {
 		// caller just looking for root tags
-		return found, t.tagsForNode(retTagIndex), nil
+		var results []uint32
+		node := &t.nodes[1]
+		if inclusive {
+			results = t.tagsForNode(retTagIndex)
+		}
+		err := t.walkTree(node.Left, node.Right, func(types []uint32, i int) bool {
+			results = append(results, types...)
+			return true
+		}, 1)
+		if err != nil && err != errStop {
+			return false, nil, err
+		}
+		return found, results, nil
 	}
 
-	var nodeIndex uint
 	if !address.IsLeftBitSet() {
 		nodeIndex = root.Left
 	} else {
@@ -716,10 +728,6 @@ func (t *TreeV4) FindSubnetTags(address patricia.IPv4Address, inclusive bool) (b
 		node := &t.nodes[nodeIndex]
 
 		matchCount := node.MatchCount(address)
-		if matchCount < node.prefixLength {
-			// didn't match the entire node - we're done
-			return false, nil, nil
-		}
 
 		// matched the full node - get its tags, then chop off the bits we've already matched and continue
 		if node.TagCount > 0 {
