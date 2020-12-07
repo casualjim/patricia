@@ -876,6 +876,36 @@ func TestTagsMap(t *testing.T) {
 	assert.Equal(t, "tagC", tree.tagsForNode(1)[1])
 }
 
+func TestInsertMultipleTagsForSameAddress(t *testing.T) {
+	address := ipv4FromBytes([]byte{1, 2, 3, 4}, 32)
+
+	tree := NewTreeV4()
+	countIncreased, count, err := tree.Add(address, "hi", nil)
+	assert.NoError(t, err)
+	assert.True(t, countIncreased)
+	assert.Equal(t, 1, count)
+
+	countIncreased, count, err = tree.Add(address, "hi", nil)
+	assert.NoError(t, err)
+	assert.True(t, countIncreased)
+	assert.Equal(t, 2, count)
+
+	countIncreased, count, err = tree.Add(address, "hi", nil)
+	assert.NoError(t, err)
+	assert.True(t, countIncreased)
+	assert.Equal(t, 3, count)
+
+	countIncreased, count, err = tree.Add(address, "hey", nil)
+	assert.NoError(t, err)
+	assert.True(t, countIncreased)
+	assert.Equal(t, 4, count)
+
+	success, tags, err := tree.FindDeepestTags(address)
+	require.NoError(t, err)
+	require.True(t, success)
+	require.Equal(t, []GeneratedType{"hi", "hi", "hi", "hey"}, tags)
+}
+
 // test duplicate tags with no match func
 func TestDuplicateTagsWithNoMatchFunc(t *testing.T) {
 	matchFunc := MatchesFunc(nil)
